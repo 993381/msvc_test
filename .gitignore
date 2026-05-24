@@ -1,0 +1,57 @@
+# Build directories
+build/
+Build/
+out/
+output/
+
+# CMake generated files
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CMakeCache.txt
+*.cmake
+!CMakeLists.txt
+CTestTestfile.cmake
+_deps/
+
+# IDE files
+.vs/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.vcxproj*
+*.filters
+*.user
+
+# Compiled objects and binaries
+*.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.manifest
+
+# Debug files
+*.log
+*.tlog
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Package files
+*.zip
+*.tar.gz
+*.rar
+
+# Temporary files
+*~
+*.swp
+*.tmp
+*.temp
