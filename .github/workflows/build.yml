@@ -9,10 +9,11 @@ on:
 
 jobs:
   build-windows-msvc:
-    name: Windows MSVC Build
+    name: Windows MSVC ${{ matrix.platform }}-${{ matrix.build_type }}
     runs-on: windows-latest
 
     strategy:
+      fail-fast: false
       matrix:
         build_type: [Release, Debug]
         platform: [x64, x86]
@@ -24,17 +25,24 @@ jobs:
     - name: Setup MSVC Developer Command Prompt
       uses: ilammy/msvc-dev-cmd@v1
       with:
-        arch: ${{ matrix.platform }}
+        arch: ${{ matrix.platform == 'x86' && 'x86' || 'amd64' }}
 
-    - name: Configure CMake
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -A ${{ matrix.platform }}
+    - name: Configure CMake (Ninja Generator)
+      env:
+        CMAKE_GENERATOR: Ninja
+      run: |
+        cmake -B ${{ github.workspace }}/build `
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+          -G "Ninja" `
+          -DCMAKE_C_COMPILER=cl.exe `
+          -DCMAKE_CXX_COMPILER=cl.exe
 
     - name: Build project
       run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.build_type }} --parallel
 
     - name: Run tests (if available)
       working-directory: ${{ github.workspace }}/build
-      run: ctest --build-config ${{ matrix.build_type }} --output-on-failure
+      run: ctest --output-on-failure
       continue-on-error: true
 
     - name: Upload build artifacts
@@ -43,6 +51,5 @@ jobs:
       with:
         name: demo-${{ matrix.platform }}-${{ matrix.build_type }}
         path: |
-          ${{ github.workspace }}/build/${{ matrix.build_type }}/*.exe
           ${{ github.workspace }}/build/*.exe
         retention-days: 7
