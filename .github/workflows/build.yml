@@ -3,6 +3,8 @@ name: C++ Build with MSVC
 on:
   push:
     branches: [ main, master, develop ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main, master, develop ]
   workflow_dispatch:
@@ -53,3 +55,81 @@ jobs:
         path: |
           ${{ github.workspace }}/build/*.exe
         retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: build-windows-msvc
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        merge-multiple: true
+
+    - name: Display structure of downloaded files
+      run: Get-ChildItem -Path artifacts -Recurse | Select-Object FullName
+
+    - name: Create ZIP archive for Release
+      run: |
+        Compress-Archive -Path "artifacts\*" -DestinationPath "demo-windows-builds.zip"
+
+    - name: Generate Release Notes
+      id: generate_notes
+      run: |
+        $tag = "${{ github.ref_name }}"
+        $notes = @"
+        ## 📦 Demo v${tag} Release
+        
+        ### 🖥️ Build Information
+        - **Platform**: Windows (MSVC)
+        - **Build Date**: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        - **Commit**: ${{ github.sha }}
+        
+        ### 📥 Downloads
+        
+        | File | Description |
+        |------|-------------|
+        | `demo-x64-Release.exe` | 64-bit Release version |
+        | `demo-x64-Debug.exe` | 64-bit Debug version |
+        | `demo-x86-Release.exe` | 32-bit Release version |
+        | `demo-x86-Debug.exe` | 32-bit Debug version |
+        
+        ---
+        
+        *This release was automatically created by GitHub Actions*
+        "@
+        $notes | Out-File -FilePath release_notes.md -Encoding UTF8
+        Write-Output "::set-output name=notes::$notes"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        body_path: release_notes.md
+        files: |
+          artifacts/demo-x64-Release.exe
+          artifacts/demo-x64-Debug.exe
+          artifacts/demo-x86-Release.exe
+          artifacts/demo-x86-Debug.exe
+          demo-windows-builds.zip
+        draft: false
+        prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Print Release URL
+      run: |
+        Write-Host "✅ Release created successfully!"
+        Write-Host ""
+        Write-Host "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+        Write-Host ""
+        Write-Host "📋 You can download the binaries from the release page above."
